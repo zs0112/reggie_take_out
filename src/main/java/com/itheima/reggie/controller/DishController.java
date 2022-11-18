@@ -6,6 +6,7 @@ import com.itheima.reggie.common.R;
 import com.itheima.reggie.dto.DishDto;
 import com.itheima.reggie.entity.Category;
 import com.itheima.reggie.entity.Dish;
+import com.itheima.reggie.entity.DishFlavor;
 import com.itheima.reggie.entity.Employee;
 import com.itheima.reggie.service.CategoryService;
 import com.itheima.reggie.service.DishFlavorService;
@@ -112,7 +113,7 @@ public class DishController {
         }
         return R.success("售卖状态修改成功");
     }
-
+/*
     @GetMapping("/list")
     public R<List<Dish>> list(Dish dish){
         LambdaQueryWrapper<Dish> lambdaQueryWrapper = new LambdaQueryWrapper<>();
@@ -123,4 +124,30 @@ public class DishController {
         return R.success(list);
 
     }
+    */
+@GetMapping("/list")
+public R<List<DishDto>> list(Dish dish){
+    LambdaQueryWrapper<Dish> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+    lambdaQueryWrapper.eq(dish.getCategoryId()!=null,Dish::getCategoryId,dish.getCategoryId());
+    lambdaQueryWrapper.eq(Dish::getStatus,1);
+    lambdaQueryWrapper.orderByDesc(Dish::getSort).orderByDesc(Dish::getUpdateTime);
+    List<Dish> list = dishService.list(lambdaQueryWrapper);
+    List<DishDto> dishDtos = list.stream().map((item)->{
+        DishDto dishDto = new DishDto();
+        BeanUtils.copyProperties(item,dishDto);
+        Long categoryId = item.getCategoryId();
+        Category byId = categoryService.getById(categoryId);
+        if (byId!=null){
+            String name = byId.getName();
+            dishDto.setCategoryName(name);
+        }
+        Long id = item.getId();//当前菜品id
+        LambdaQueryWrapper<DishFlavor> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(DishFlavor::getDishId,id);
+        List<DishFlavor> list1 = dishFlavorService.list(queryWrapper);
+        dishDto.setFlavors(list1);
+        return dishDto;
+    }).collect(Collectors.toList());
+    return R.success(dishDtos);
+}
 }
